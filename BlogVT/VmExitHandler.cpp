@@ -265,7 +265,7 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		break;
 	case ExitEptMisconfig:
 		Log("ExitEptMisconfig");
-		DbgBreakPoint();
+		KeBugCheckEx(0x7778, Rip, 0, 0, 0);
 		break;
 	case ExitEptViolation:
 		EptViolationHandle();
@@ -439,7 +439,7 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	}
 	default:
 		Log("Unexpected Exit %d", ExitReason.fields.reason);
-		DbgBreakPoint();
+		KeBugCheckEx(0x7779, Rip, 0, 0, 0);
 		break;
 	}
 

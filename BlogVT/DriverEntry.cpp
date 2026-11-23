@@ -103,7 +103,8 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT driver, _In_  PUNICODE_STRING  path)
 {
 	//用不到的参数用UNREFERENCED_PARAMETER括起来，否则报错，也在属性->C/C++ ->“警告视为错误”关掉，这里及之后的文章里都不关
 	UNREFERENCED_PARAMETER(path);
-	driver->DriverUnload = DriverUnload;
+	UNREFERENCED_PARAMETER(driver);
+	//driver->DriverUnload = DriverUnload;
 	
 	if (!InitEpt()) {
 		UseEpt = FALSE;
