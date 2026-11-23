@@ -17,6 +17,9 @@
       <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
       <Extensions>inf;inv;inx;mof;mc;</Extensions>
     </Filter>
+    <Filter Include="util">
+      <UniqueIdentifier>{2527235a-1e81-4ba2-a06b-eb15ce77b311}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DriverEntry.cpp">
@@ -62,6 +65,9 @@
     </ClInclude>
     <ClInclude Include="nmd_assembly.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MsrBitmap.h">
+      <Filter>util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -279,11 +279,10 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		ULONG64 Rsp = 0;
 		__vmx_vmread(GuestRsp, &Rsp);
 		ULONG msrIndex = (ULONG)pGuestRegisters->cx;
-		// 每个 CPU 最多打印 8 次
-		if (InterlockedIncrement(&MsrReadLogCount) <= 8)
+		if (InterlockedIncrement(&MsrReadLogCount) <= 16)
 		{
 			Log(
-				"ExitMsrRead MSR=%08X RIP=%I64X RSP=%I64X",
+				"ExitMsrRead CPU[%i] MSR=%08X RIP=%I64X RSP=%I64X", CurrentProcessorIndex,
 				msrIndex, Rip, Rsp
 			);
 		}

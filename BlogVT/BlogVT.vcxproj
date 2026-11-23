@@ -156,6 +156,7 @@
     <ClInclude Include="def.h" />
     <ClInclude Include="HOOK.h" />
     <ClInclude Include="ia32.h" />
+    <ClInclude Include="MsrBitmap.h" />
     <ClInclude Include="nmd_assembly.h" />
     <ClInclude Include="TinyVT.h" />
   </ItemGroup>

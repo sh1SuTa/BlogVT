@@ -1,5 +1,5 @@
 #include"TinyVT.h"
-
+#include"MsrBitmap.h"
 SegmentDescriptor* VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector) {
 
 	const SegmentSelector ss = { segment_selector };
@@ -168,6 +168,12 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 
 
 	ULONG_PTR MsrBitmapPhyAddr = MmGetPhysicalAddress((PVOID)MsrBitmap).QuadPart;
+	// 放行 IA32_MPERF
+	SetMsrBitmap((PMSR_BITMAP)MsrBitmap, 0xE7, FALSE, FALSE);
+	SetMsrBitmap((PMSR_BITMAP)MsrBitmap, 0xE7, TRUE, FALSE);
+	// 放行 IA32_APERF
+	SetMsrBitmap((PMSR_BITMAP)MsrBitmap, 0xE8, FALSE, FALSE);
+	SetMsrBitmap((PMSR_BITMAP)MsrBitmap, 0xE8, TRUE, FALSE);
 	__vmx_vmwrite(MsrBitmap, MsrBitmapPhyAddr);
 
 	ULONG_PTR exception_bitmap = 0;
