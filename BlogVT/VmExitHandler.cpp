@@ -425,21 +425,28 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		VmmAdjustGuestRip();
 		break;
 	}
-	case ExitXsetbv:
-	{
-		Log("ExitXsetbv");
+		case ExitXsetbv:
+		{
+			Log("ExitXsetbv");
 
-		ULARGE_INTEGER value = { 0 };
-		value.LowPart = pGuestRegisters->ax;
-		value.HighPart = pGuestRegisters->dx;
-		_xsetbv(pGuestRegisters->cx, value.QuadPart);
+			ULARGE_INTEGER value = { 0 };
+			value.LowPart = pGuestRegisters->ax;
+			value.HighPart = pGuestRegisters->dx;
+			_xsetbv(pGuestRegisters->cx, value.QuadPart);
 
-		VmmAdjustGuestRip();
-		break;
-	}
+			VmmAdjustGuestRip();
+			break;
+		}
+		case ExitInit: {
+			KeBugCheckEx(0x7780, Rip, ExitReason.fields.reason, CurrentProcessorIndex, 0);
+			break;
+		}
+		case ExitSipi: 
+		{
+
+		}
 	default:
-		Log("Unexpected Exit %d", ExitReason.fields.reason);
-		KeBugCheckEx(0x7779, Rip, 0, 0, 0);
+		KeBugCheckEx(0x7781, Rip, ExitReason.fields.reason, 0, 0);
 		break;
 	}
 
