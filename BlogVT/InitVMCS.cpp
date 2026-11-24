@@ -1,5 +1,6 @@
 #include"TinyVT.h"
 #include"MsrBitmap.h"
+#include"CPU.h"
 SegmentDescriptor* VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector) {
 
 	const SegmentSelector ss = { segment_selector };
@@ -179,8 +180,8 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 	ULONG_PTR exception_bitmap = 0;
 	__vmx_vmwrite(ExceptionBitmap, exception_bitmap);
 
+	ULONG processor = KeGetCurrentProcessorNumberEx(NULL);
 	if (UseEpt) {
-		ULONG processor = KeGetCurrentProcessorNumberEx(NULL);
 		__vmx_vmwrite(EptPointer, EptP.all);
 		__vmx_vmwrite(VirtualProcessorId, processor + 1);
 	}
@@ -227,6 +228,7 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 	__vmx_vmwrite(GuestIa32SYSENTERCS, __readmsr(MsrSysenterCs));
 
 	__vmx_vmwrite(GuestCr0, __readcr0());
+	
 	__vmx_vmwrite(GuestCr3, __readcr3());
 	__vmx_vmwrite(GuestCr4, __readcr4());
 
@@ -260,6 +262,7 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 	__vmx_vmwrite(HostTrSelector, AsmReadTR() & 0xf8);
 	__vmx_vmwrite(HostIa32SYSENTERCS, __readmsr(MsrSysenterCs));
 	__vmx_vmwrite(HostCr0, __readcr0());
+	
 	__vmx_vmwrite(HostCr3, __readcr3());
 	__vmx_vmwrite(HostCr4, __readcr4());
 	__vmx_vmwrite(HostFsBase, __readmsr(MsrFsBase));
@@ -281,7 +284,7 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 	//如果执行到这里,说明失败了
 	ULONG_PTR errorCode = 0;
 	__vmx_vmread(VmVMInstructionError, &errorCode);
-	Log("VmLaunch失败!错误码: %d", errorCode);
+	Log("VmLaunch失败!错误码: %llx", errorCode);
 
 	return FALSE;
 }

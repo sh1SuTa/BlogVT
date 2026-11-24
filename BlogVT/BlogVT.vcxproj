@@ -146,6 +146,7 @@
     <ClCompile Include="EPT.cpp" />
     <ClCompile Include="EptHook.cpp" />
     <ClCompile Include="InitVMCS.cpp" />
+    <ClCompile Include="MsrBitmap.c" />
     <ClCompile Include="test.cpp" />
     <ClCompile Include="TinyVT.cpp" />
     <ClCompile Include="util.cpp" />
@@ -153,7 +154,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Asm.h" />
+    <ClInclude Include="CPU.h" />
     <ClInclude Include="def.h" />
+    <ClInclude Include="ExitHandler.h" />
     <ClInclude Include="HOOK.h" />
     <ClInclude Include="ia32.h" />
     <ClInclude Include="MsrBitmap.h" />

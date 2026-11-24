@@ -98,7 +98,7 @@ EXTERN_C VOID DriverUnload(PDRIVER_OBJECT driver)
 
 EXTERN_C VOID HookTest();
 
-//已C语言方式导出，C++为支持函数重载，函数名会被改变，导致编译不通过
+
 NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT driver, _In_  PUNICODE_STRING  path)
 {
 	//用不到的参数用UNREFERENCED_PARAMETER括起来，否则报错，也在属性->C/C++ ->“警告视为错误”关掉，这里及之后的文章里都不关

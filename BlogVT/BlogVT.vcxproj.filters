@@ -20,6 +20,12 @@
     <Filter Include="util">
       <UniqueIdentifier>{2527235a-1e81-4ba2-a06b-eb15ce77b311}</UniqueIdentifier>
     </Filter>
+    <Filter Include="context">
+      <UniqueIdentifier>{f9a2e777-21d4-4606-af84-b9a5345b7d94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="VMExit">
+      <UniqueIdentifier>{7ee0435f-6130-49cd-86df-6390e0cf0e19}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DriverEntry.cpp">
@@ -46,15 +52,15 @@
     <ClCompile Include="test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MsrBitmap.c">
+      <Filter>util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="def.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TinyVT.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ia32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Asm.h">
@@ -68,6 +74,15 @@
     </ClInclude>
     <ClInclude Include="MsrBitmap.h">
       <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="ia32.h">
+      <Filter>context</Filter>
+    </ClInclude>
+    <ClInclude Include="CPU.h">
+      <Filter>context</Filter>
+    </ClInclude>
+    <ClInclude Include="ExitHandler.h">
+      <Filter>VMExit</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

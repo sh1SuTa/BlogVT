@@ -6,7 +6,7 @@
 enum MSR
 {
 	MsrApicBase = 0x01B,
-
+#define APIC_BASE_BSP (1ULL << 8)
 	MsrFeatureControl = 0x03A,
 
 	MsrSysenterCs = 0x174,

@@ -18,7 +18,7 @@ static __forceinline BOOLEAN SetMsrBitmap(
     BOOLEAN intercept
 )
 {
-    if (bitmap == nullptr)
+    if (bitmap == NULL)
         return FALSE;
 
     ULONG offset;
@@ -40,14 +40,26 @@ static __forceinline BOOLEAN SetMsrBitmap(
         return FALSE;
     }
 
-    UCHAR* bytes = reinterpret_cast<UCHAR*>(bitmap);
+    UCHAR* bytes = (UCHAR*)(bitmap);
 
-    UCHAR mask = static_cast<UCHAR>(1u << (index % 8));
+    UCHAR mask = (UCHAR)(1u << (index % 8));
 
     if (intercept)
         bytes[offset + index / 8] |= mask;
     else
-        bytes[offset + index / 8] &= static_cast<UCHAR>(~mask);
+        bytes[offset + index / 8] &= (UCHAR)(~mask);
 
     return TRUE;
 }
+
+#define IA32_APIC_BASE 0x1B
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void CheckApicMode(ULONG CPUIndex);
+
+#ifdef __cplusplus
+}
+#endif
