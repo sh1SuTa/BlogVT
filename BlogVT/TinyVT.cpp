@@ -49,7 +49,7 @@ BOOLEAN TinyVT::StartVT()
 		Log("[CPU;%d]VMXONÊ§°Ü£¡", index);
 		return FALSE;
 	}
-
+	
 	FunAddr funAddr = { 0 };
 	funAddr.fun = &TinyVT::InitVMCS;
 

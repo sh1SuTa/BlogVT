@@ -1,5 +1,6 @@
 #include"TinyVT.h"
 #include"HOOK.h"
+#include"CheckUtil.h"
 #include<Ndis.h>
 
 TinyVT* AllVT[128] = {0};
@@ -17,6 +18,12 @@ EXTERN_C VOID LoadVT(
 
 	//获取当前CPU核心的号数
 	ULONG index = KeGetCurrentProcessorIndex();
+	BOOLEAN b = checkWait_for_SIPI();
+	if (b==0)
+	{
+		Log("CPU%d 不支持Wait_for_SIPI", index);
+		goto done;
+	}
 	if (CheckVTSupport() && CheckVTEnable())
 	{
 		TinyVT* tinyVt = (TinyVT*)ExAllocatePool2(

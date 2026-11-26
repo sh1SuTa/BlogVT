@@ -1,6 +1,7 @@
 #include"HOOK.h"
 #include"CPU.h"
 #include"MsrBitmap.h"
+#include"ExitHandler.h"
 union EptViolationQualification {
 	ULONG64 all;
 	struct {
@@ -187,63 +188,7 @@ VOID EptViolationHandle()
 		DbgBreakPoint();
 	}
 }
-void VmxInitGuestStateAfterExitInit(GpRegisters* guestRegs,ULONG currentCPU
-) {
-	(currentCPU);
-	__vmx_vmwrite(GuestRflags, 0x2);
-	__vmx_vmwrite(GuestRip, 0xFFF0);
-	size_t oldCr0;
-	__vmx_vmread(GuestCr0, &oldCr0);
-	size_t newCr0 = (oldCr0 & 0x60000000) | 0x10;
-	__vmx_vmwrite(GuestCr0, newCr0);
-	//g_vcpu[currentCPU].GuestCr2 = 0;
-	__vmx_vmwrite(GuestCr3, 0);
-	__vmx_vmwrite(GuestCr4, 0);
-	__vmx_vmwrite(GuestCsSelector, 0xF000);
-	__vmx_vmwrite(GuestCsBase, 0xFFFF0000);
-	__vmx_vmwrite(GuestCsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestSsSelector, 0);
-	__vmx_vmwrite(GuestSsBase, 0);
-	__vmx_vmwrite(GuestDsSelector, 0);
-	__vmx_vmwrite(GuestDsBase, 0);
-	__vmx_vmwrite(GuestEsSelector, 0);
-	__vmx_vmwrite(GuestEsBase, 0);
-	__vmx_vmwrite(GuestFsSelector, 0);
-	__vmx_vmwrite(GuestFsBase, 0);
-	__vmx_vmwrite(GuestGsSelector, 0);
-	__vmx_vmwrite(GuestGsBase, 0);
 
-	__vmx_vmwrite(GuestGDTRBase, 0);
-	__vmx_vmwrite(GuestGDTRLimit, 0xFFFF);
-	__vmx_vmwrite(GuestIDTRBase, 0);
-	__vmx_vmwrite(GuestIDTRLimit, 0xFFFF);
-	__vmx_vmwrite(GuestIa32EferCtl, 0);
-	//Access Rights TODO
-	guestRegs->ax = 0;
-	guestRegs->bx = 0;
-	guestRegs->cx = 0;
-	//guestRegs->dx = 0;处理器签名对应值
-	guestRegs->dx = 0;
-	//rsp设置0
-	guestRegs->bp = 0;
-	guestRegs->si = 0;
-	guestRegs->di = 0;
-	guestRegs->r9 = 0;
-	guestRegs->r10 = 0;
-	guestRegs->r11 = 0;
-	guestRegs->r12 = 0;
-	guestRegs->r13 = 0;
-	guestRegs->r14 = 0;
-	guestRegs->r15 = 0;
-
-	//__vmx_vmwrite(GuestDr0, 0);
-	//__vmx_vmwrite(GuestDr1, 0);
-	//__vmx_vmwrite(GuestDr2, 0);
-	//__vmx_vmwrite(GuestDr3, 0);
-	//__vmx_vmwrite(GuestDr6, 0xFFFF0FF0);
-	__vmx_vmwrite(GuestDr7, 0x400);
-
-}
 
 BOOLEAN VmCallHandle(GpRegisters* pGuestRegisters)
 {
@@ -289,6 +234,7 @@ BOOLEAN VmCallHandle(GpRegisters* pGuestRegisters)
 		break;
 	default:
 		Log("未知的VmCall");
+		KeBugCheckEx(0x7A75, 0, 0, 0, 0);
 		break;
 	}
 
@@ -308,18 +254,15 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	FlagRegister guestRflag = { 0 };
 	BOOLEAN ContinueVmx = TRUE;
 	ULONG_PTR Rip = 0;
-	//保存 Guest CR2，恢复 Host CR2
-	//g_vcpu[CurrentProcessorIndex].GuestCr2 = __readcr2();
-	//__writecr2(g_vcpu[CurrentProcessorIndex].HostCr2);
 	__vmx_vmread(GuestRip, &Rip);
 	__vmx_vmread(VmExitReason, (SIZE_T*)(&ExitReason));
 
 
-	static volatile LONG MsrReadLogCount = 0;
-	if (InterlockedIncrement(&MsrReadLogCount) <= 16)
-	{
-		CheckApicMode(CurrentProcessorIndex);
-	}
+	//static volatile LONG MsrReadLogCount = 0;
+	//if (InterlockedIncrement(&MsrReadLogCount) <= 16)
+	//{
+	//	CheckApicMode(CurrentProcessorIndex);
+	//}
 
 	switch (ExitReason.fields.reason)
 	{
@@ -428,7 +371,17 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		break;
 	}
 	case ExitVmclear:
-	case ExitVmptrld:
+	case ExitVmptrld: {
+		SIZE_T cs = 0;
+		__vmx_vmread(GuestCsSelector, &cs);
+		SIZE_T csBase = 0;
+		__vmx_vmread(GuestCsBase, &csBase);
+		SIZE_T instructionInfo = 0;
+		__vmx_vmread(VmEntryInterruptionInformation, &instructionInfo);
+		
+		KeBugCheckEx(0x7A74, Rip, cs, CurrentProcessorIndex, instructionInfo);
+		break;
+	}
 	case ExitVmptrst:
 	case ExitVmread:
 	case ExitVmwrite:
@@ -490,43 +443,91 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		VmmAdjustGuestRip();
 		break;
 	}
-		case ExitXsetbv:
-		{
-			Log("ExitXsetbv");
+	case ExitXsetbv:
+	{
+		Log("ExitXsetbv");
 
-			ULARGE_INTEGER value = { 0 };
-			value.LowPart = pGuestRegisters->ax;
-			value.HighPart = pGuestRegisters->dx;
-			_xsetbv(pGuestRegisters->cx, value.QuadPart);
+		ULARGE_INTEGER value = { 0 };
+		value.LowPart = pGuestRegisters->ax;
+		value.HighPart = pGuestRegisters->dx;
+		_xsetbv(pGuestRegisters->cx, value.QuadPart);
 
-			VmmAdjustGuestRip();
-			break;
-		}
-		case ExitInit: {
-			ULONG64 apicBase = __readmsr(MsrApicBase);
-			BOOLEAN isBsp = (apicBase & (1ULL << 8)) != 0;
-			if (isBsp)
-			{
-				Log("Current CPU-%i is BSP",CurrentProcessorIndex);
-			}
-			else
-			{
-				Log("Current CPU-%i is AP", CurrentProcessorIndex);
-				__vmx_vmwrite(	GuestActivityState,
-					GUEST_ACTIVITY_WAIT_FOR_SIPI
-				);
-				//VmxInitGuestStateAfterExitInit(pGuestRegisters, CurrentProcessorIndex);
-			}
-			KeBugCheckEx(0x7A76, Rip, ExitReason.fields.reason, CurrentProcessorIndex, isBsp);
-			break;
-		}
-		case ExitSipi: 
+		VmmAdjustGuestRip();
+		break;
+	}
+	case ExitInit: {
+		ULONG64 apicBase = __readmsr(MsrApicBase);
+		BOOLEAN isBsp = (apicBase & (1ULL << 8)) != 0;
+		if (isBsp)
 		{
-			break;
+			Log("Current CPU-%i is BSP",CurrentProcessorIndex);
 		}
-		default:
-			KeBugCheckEx(0x7A77, Rip, ExitReason.fields.reason, 0, 0);
-			break;
+		else
+		{
+			
+			
+			VmxInitGuestStateAfterExitInit(pGuestRegisters, CurrentProcessorIndex);
+			// AP 进入等待 SIPI 状态
+			__vmx_vmwrite(GuestActivityState,GUEST_ACTIVITY_WAIT_FOR_SIPI	);
+			__vmx_vmwrite(VmEntryInterruptionInformation, 0);
+			Log(" CPU-%i is AP", CurrentProcessorIndex);
+		}
+		//KeBugCheckEx(0x7A75, Rip, ExitReason.fields.reason, CurrentProcessorIndex, isBsp);
+		break;
+	}
+	case ExitSipi: 
+	{
+		
+
+		SIZE_T exitQualification = 0;
+		__vmx_vmread(VmExitQualification, &exitQualification);
+		UCHAR sipiVector = (UCHAR)(exitQualification & 0xFF);
+		// 计算 CS Selector 和 Base
+		ULONG64 csSelector = (ULONG64)sipiVector << 8;
+		ULONG64 csBase = (ULONG64)sipiVector << 12;
+		// 设置 Guest 启动状态
+		__vmx_vmwrite(GuestCsSelector, csSelector);
+		__vmx_vmwrite(GuestCsBase, csBase);
+		__vmx_vmwrite(GuestRip, 0);
+
+		Log("Current CPU-%i ExitSipi ,vector= %02X,CS Selector = %llX,CS Base = %llX", CurrentProcessorIndex, sipiVector, csSelector, csBase);
+		__vmx_vmwrite(GuestActivityState, GUEST_ACTIVITY_ACTIVE);
+		__vmx_vmwrite(VmEntryInterruptionInformation, 0);
+		KeBugCheckEx(0x7A04, exitQualification, sipiVector, csSelector, csBase);
+		break;
+	}
+	case ExitInvalidGuestState: {
+		SIZE_T cr0 = 0;
+		SIZE_T cr4 = 0;
+		SIZE_T efer = 0;
+		SIZE_T activity = 0;
+		SIZE_T interruptibility = 0;
+		SIZE_T entryControls = 0;
+
+		__vmx_vmread(GuestCr0, &cr0);
+		__vmx_vmread(GuestCr4, &cr4);
+		__vmx_vmread(GuestIa32EferCtl, &efer);
+		__vmx_vmread(GuestActivityState, &activity);
+		__vmx_vmread(GuestInterruptibilityState, &interruptibility);
+		__vmx_vmread(VmEntryControls, &entryControls);
+
+		KeBugCheckEx(
+			0x7A33,
+			cr0,
+			cr4,
+			efer,
+			interruptibility
+		);
+	}
+	default: {
+		SIZE_T qualification = 0;
+		SIZE_T entryInfo = 0;
+
+		__vmx_vmread(VmExitQualification, &qualification);
+		__vmx_vmread(VmEntryInterruptionInformation, &entryInfo);
+		KeBugCheckEx(0x7A77, CurrentProcessorIndex, qualification, ExitReason.all,  entryInfo);
+		break;
+	}
 	}
 
 	if (irql < DISPATCH_LEVEL) {

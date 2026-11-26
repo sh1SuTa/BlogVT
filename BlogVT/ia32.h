@@ -250,7 +250,7 @@ enum VmcsField
 	GuestLDTRBase = 0x6812,
 	GuestLDTRLimit = 0x480c,
 	GuestLDTRAccessRight = 0x4820,
-
+	//Task Register
 	GuestTRSelector = 0x80e,
 	GuestTRBase = 0x6814,
 	GuestTRLimit = 0x480e,
@@ -281,7 +281,7 @@ enum VmcsField
 	GuestSmBase = 0x4828,
 
 	GuestActivityState = 0x4826,
-	GuestInterruptState = 0x4824,
+	GuestInterruptibilityState = 0x4824,
 	GuestPendingDebugExceptions = 0x6822,
 	GuestVmcsLinkPointer = 0x2800,
 	GuestVmcsLinkPointerHigh = 0x2801,
@@ -790,6 +790,13 @@ typedef union _FlagRegister {
 }FlagRegister;
 
 typedef struct _GpRegistersX64 {
+
+	ULONG64 DR6;
+	ULONG64 DR3;
+	ULONG64 DR2;
+	ULONG64 DR1;
+	ULONG64 DR0;
+	ULONG64 Cr2;
 	ULONG_PTR r15;
 	ULONG_PTR r14;
 	ULONG_PTR r13;
@@ -801,7 +808,7 @@ typedef struct _GpRegistersX64 {
 	ULONG_PTR di;
 	ULONG_PTR si;
 	ULONG_PTR bp;
-	ULONG_PTR sp;
+	ULONG_PTR sp;//只占位不使用
 	ULONG_PTR bx;
 	ULONG_PTR dx;
 	ULONG_PTR cx;

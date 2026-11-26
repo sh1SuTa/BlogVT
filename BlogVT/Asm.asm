@@ -1,15 +1,16 @@
 PUBLIC AsmVmxLaunch
 EXTERN VmexitHandler:PROC
-
+EXTERN VmxRestoreHostCr2:PROC
+EXTERN VmxSaveHostCr2:PROC
 ;用于存储和恢复Guest环境
 ;相当于32位的pushed和poped
 PUSHAQ MACRO
     push    rax
     push    rcx
     push    rdx
-    push    rbx
+    push    rbx     ;32
     push    -1      ; 相当于push rsp
-    push    rbp
+    push    rbp     ;48
     push    rsi
     push    rdi
     push    r8
@@ -20,9 +21,33 @@ PUSHAQ MACRO
     push    r13
     push    r14
     push    r15
+    mov     rax, cr2
+    push    rax
+    mov     rax, dr0
+    push    rax
+    mov     rax, dr1
+    push    rax
+    mov     rax, dr2
+    push    rax
+    mov     rax, dr3
+    push    rax
+    mov     rax, dr6
+    push    rax
 ENDM
 
 POPAQ MACRO
+    pop     rax
+    mov     dr6, rax
+    pop     rax
+    mov     dr3, rax
+    pop     rax
+    mov     dr2, rax
+    pop     rax
+    mov     dr1, rax
+    pop     rax
+    mov     dr0, rax
+    pop     rax
+    mov     cr2, rax
     pop     r15
     pop     r14
     pop     r13
@@ -52,6 +77,7 @@ VMX_ERROR_WITHOUT_STATUS    EQU     2
 AsmVmxLaunch PROC
 	pushfq
 	PUSHAQ
+
 	
     mov rax,rcx;把InitVMCS函数指针放在rax
     mov rcx,rdx;在C++中调用成员函数要传入对象this指针,参数个数确定的时候，用rcx来传递,否则作为最后一个传
@@ -81,12 +107,20 @@ AsmVmxLaunch ENDP
 AsmVmmEntryPoint PROC
 	PUSHAQ			;当guest转入vmm时,通用寄存器并不会改变.而其它寄存器存放在vmcs guest域中,包括rflags
 
+    sub rsp, 50h    ;恢复 Host CR2
+    call VmxRestoreHostCr2
+    add rsp, 50h
+
 	mov rcx,rsp
 	sub rsp,50h
-	call VmexitHandler;该函数执行有三种结果,一种是遇到非预期的vmexit直接断点.返回true继续运行,需要vmresume. 返回false退出vmx,回到guest
-	add rsp,50h
+	call VmexitHandler;该函数执行有三种结果,一种是遇到非预期的vmexit直接断点.返回true继续运行,需要vmresume. 返回false关闭vmx,回到guest
+	add rsp,50h ;遵循至少32 字节 Shadow Space以及RSP的16字节对齐
 	test al,al
 	jz ExitVmx		;返回0则退出vmx
+
+    sub rsp, 50h    ;保存 Host CR2
+    call VmxSaveHostCr2
+    add rsp, 50h
 
 	POPAQ
 	vmresume		;会根据vmcs的guest域进行恢复guest状态,只是通用寄存器需要手动恢复

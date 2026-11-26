@@ -1,14 +1,15 @@
 ﻿#pragma once
 #include<basetsd.h>
-#define GUEST_ACTIVITY_ACTIVE        0
-#define GUEST_ACTIVITY_WAIT_FOR_SIPI  3
+#define GUEST_ACTIVITY_ACTIVE           0
+#define GUEST_ACTIVITY_HLT              1
+#define GUEST_ACTIVITY_SHUTDOWN         2
+#define GUEST_ACTIVITY_WAIT_FOR_SIPI    3
 typedef struct _VCPU
 {
-    ULONG64 GuestCr2;//Host 和 Guest 共享的物理寄存器
-    ULONG64 HostCr2;
-    ULONG64 DR0;
-    ULONG64 DR1;
-    ULONG64 DR2;
-    ULONG64 DR3;
-    ULONG64 DR6;//0xFFFF0FF0
+    ULONG64 HostDR0;
+    ULONG64 HostDR1;
+    ULONG64 HostDR2;
+    ULONG64 HostDR3;
+    ULONG64 HostDR6;
+    ULONG64 HostCR2;
 } VCPU;

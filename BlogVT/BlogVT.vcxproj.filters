@@ -31,9 +31,6 @@
     <ClCompile Include="DriverEntry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TinyVT.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -53,6 +50,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MsrBitmap.c">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="ExitHandler.c">
+      <Filter>VMExit</Filter>
+    </ClCompile>
+    <ClCompile Include="util.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="CheckUtil.c">
       <Filter>util</Filter>
     </ClCompile>
   </ItemGroup>
@@ -83,6 +89,9 @@
     </ClInclude>
     <ClInclude Include="ExitHandler.h">
       <Filter>VMExit</Filter>
+    </ClInclude>
+    <ClInclude Include="CheckUtil.h">
+      <Filter>util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

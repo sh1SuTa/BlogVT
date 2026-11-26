@@ -142,9 +142,11 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CheckUtil.c" />
     <ClCompile Include="DriverEntry.cpp" />
     <ClCompile Include="EPT.cpp" />
     <ClCompile Include="EptHook.cpp" />
+    <ClCompile Include="ExitHandler.c" />
     <ClCompile Include="InitVMCS.cpp" />
     <ClCompile Include="MsrBitmap.c" />
     <ClCompile Include="test.cpp" />
@@ -154,6 +156,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Asm.h" />
+    <ClInclude Include="CheckUtil.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="def.h" />
     <ClInclude Include="ExitHandler.h" />

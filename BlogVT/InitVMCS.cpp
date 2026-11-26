@@ -1,6 +1,7 @@
 #include"TinyVT.h"
 #include"MsrBitmap.h"
 #include"CPU.h"
+#include"ExitHandler.h"
 SegmentDescriptor* VmpGetSegmentDescriptor(ULONG_PTR descriptor_table_base, USHORT segment_selector) {
 
 	const SegmentSelector ss = { segment_selector };
@@ -262,7 +263,7 @@ BOOLEAN TinyVT::InitVMCS(PVOID guestStack, PVOID guestResumeRip)
 	__vmx_vmwrite(HostTrSelector, AsmReadTR() & 0xf8);
 	__vmx_vmwrite(HostIa32SYSENTERCS, __readmsr(MsrSysenterCs));
 	__vmx_vmwrite(HostCr0, __readcr0());
-	
+	g_vcpu[processor].HostCR2 = __readcr2();
 	__vmx_vmwrite(HostCr3, __readcr3());
 	__vmx_vmwrite(HostCr4, __readcr4());
 	__vmx_vmwrite(HostFsBase, __readmsr(MsrFsBase));
