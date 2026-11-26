@@ -7,6 +7,7 @@
 #define CR0_CD (1ULL << 30)
 #define CR0_NW (1ULL << 29)
 #define CR0_ET (1ULL << 4)
+#define CR0_NE (1ULL << 5)
 #ifdef __cplusplus
 extern "C" {
 #endif

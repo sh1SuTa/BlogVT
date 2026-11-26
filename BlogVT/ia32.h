@@ -143,6 +143,7 @@ enum VmcsField
 	VmEntryMsrLoadCount = 0x1014,
 	VmEntryInterruptionInformation = 0x4016,
 	VmEntryExceptionErrorCode = 0x4018,
+	VmInstructionError = 0x4400,
 	VmEntryInstructionLength = 0x401a,
 	VmEntryMsrLoadAddress = 0x200a,
 	VmEntryMsrLoadAddressHigh = 0x200b,

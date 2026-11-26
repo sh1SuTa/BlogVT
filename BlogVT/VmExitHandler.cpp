@@ -472,7 +472,7 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 			__vmx_vmwrite(VmEntryInterruptionInformation, 0);
 			Log(" CPU-%i is AP", CurrentProcessorIndex);
 		}
-		//KeBugCheckEx(0x7A75, Rip, ExitReason.fields.reason, CurrentProcessorIndex, isBsp);
+		//KeBugCheckEx(0x7A03, Rip, ExitReason.fields.reason, CurrentProcessorIndex, isBsp);
 		break;
 	}
 	case ExitSipi: 
@@ -503,21 +503,16 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		SIZE_T activity = 0;
 		SIZE_T interruptibility = 0;
 		SIZE_T entryControls = 0;
-
 		__vmx_vmread(GuestCr0, &cr0);
 		__vmx_vmread(GuestCr4, &cr4);
 		__vmx_vmread(GuestIa32EferCtl, &efer);
 		__vmx_vmread(GuestActivityState, &activity);
 		__vmx_vmread(GuestInterruptibilityState, &interruptibility);
 		__vmx_vmread(VmEntryControls, &entryControls);
+		Log("CR0:%llx,CR4:%llx,efer:%llx,activity:%llx,interruptibility:%llx,entryControls:%llx", cr0, cr4, efer, activity, interruptibility, entryControls);
 
-		KeBugCheckEx(
-			0x7A33,
-			cr0,
-			cr4,
-			efer,
-			interruptibility
-		);
+		KeBugCheckEx(0x7A33, entryControls, cr0, cr4, efer);
+		break;
 	}
 	default: {
 		SIZE_T qualification = 0;

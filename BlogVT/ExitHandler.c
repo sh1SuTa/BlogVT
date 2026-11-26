@@ -29,7 +29,9 @@ void VmxInitGuestStateAfterExitInit(GpRegisters* guestRegs, ULONG currentCPU
 	size_t oldCr0;
 	__vmx_vmread(GuestCr0, &oldCr0);
 	ULONG64 initCr0 =
-		(oldCr0 & (CR0_CD | CR0_NW)) | CR0_ET;
+		(oldCr0 & (CR0_CD | CR0_NW))
+		| CR0_ET
+		| CR0_NE;
 	__vmx_vmwrite(GuestCr0, initCr0);
 	guestRegs->Cr2 = 0;
 	__vmx_vmwrite(GuestCr3, 0);

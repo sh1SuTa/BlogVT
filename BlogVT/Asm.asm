@@ -119,7 +119,7 @@ AsmVmmEntryPoint PROC
 	jz ExitVmx		;返回0则退出vmx
 
     sub rsp, 50h    ;保存 Host CR2
-    call VmxSaveHostCr2
+    call VmxSaveHostCr2 ;ExitHandler.c
     add rsp, 50h
 
 	POPAQ
