@@ -3,7 +3,7 @@
 #include"CheckUtil.h"
 #include<Ndis.h>
 
-TinyVT* AllVT[128] = {0};
+TinyVT* AllVT[16] = {0};
 void* __cdecl operator new(size_t, void* p) noexcept { return p; }
 void __cdecl operator delete(void*, void*) noexcept {}
 EXTERN_C VOID LoadVT(
@@ -24,6 +24,15 @@ EXTERN_C VOID LoadVT(
 		Log("CPU%d 不支持Wait_for_SIPI", index);
 		goto done;
 	}
+
+	
+	ULONG64 capability = __readmsr(0x48B);
+
+	ULONG32 allowed1 = (ULONG32)(capability >> 32);
+
+	Log("Unrestricted Guest allowed: %d",
+		(allowed1 & (1 << 7)) != 0);
+	
 	if (CheckVTSupport() && CheckVTEnable())
 	{
 		TinyVT* tinyVt = (TinyVT*)ExAllocatePool2(
@@ -116,6 +125,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT driver, _In_  PUNICODE_STRING  path)
 	if (!InitEpt()) {
 		UseEpt = FALSE;
 		Log("Ept初始化失败!");
+		return STATUS_SUCCESS;
 	}
 
 	KeGenericCallDpc(LoadVT, NULL);
@@ -127,6 +137,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT driver, _In_  PUNICODE_STRING  path)
 	Log("驱动加载");
 	return STATUS_SUCCESS;
 }
+
 EXTERN_C NTSTATUS CreateDriver() {
 	UNICODE_STRING DriverName;
 	RtlInitUnicodeString(&DriverName, L"\\Driver\\MyVtDriver");

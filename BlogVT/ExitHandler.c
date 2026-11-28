@@ -35,7 +35,23 @@ void VmxInitGuestStateAfterExitInit(GpRegisters* guestRegs, ULONG currentCPU
 	__vmx_vmwrite(GuestCr0, initCr0);
 	guestRegs->Cr2 = 0;
 	__vmx_vmwrite(GuestCr3, 0);
-	__vmx_vmwrite(GuestCr4, 0);
+	//设置CR4
+	//size_t CR4;
+	//__vmx_vmread(GuestCr4, &CR4);
+	ULONG64 cr4Fixed0 = __readmsr(0x488);
+	ULONG64 cr4Fixed1 = __readmsr(0x489);
+	__vmx_vmwrite(GuestCr4, cr4Fixed0 & cr4Fixed1);//(GuestCr4 | cr4Fixed0) & cr4Fixed1完整公式，AP时此次CR4认为0
+	//设置Cr4GuestHostMask
+#define CR4_VMXE (1ULL << 13)
+	ULONG64 cr4Mask = 0;
+	__vmx_vmread(Cr4GuestHostMask, &cr4Mask);
+	cr4Mask |= CR4_VMXE;
+	__vmx_vmwrite(Cr4GuestHostMask, cr4Mask);
+	//设置Cr4ReadShadow
+	ULONG64 shadow = 0;
+	__vmx_vmread(Cr4ReadShadow, &shadow);
+	shadow &= ~CR4_VMXE;
+	__vmx_vmwrite(Cr4ReadShadow, shadow);
 	__vmx_vmwrite(GuestCsSelector, 0xF000);
 	__vmx_vmwrite(GuestCsBase, 0xFFFF0000);
 	__vmx_vmwrite(GuestCsLimit, 0xFFFF);
@@ -43,23 +59,23 @@ void VmxInitGuestStateAfterExitInit(GpRegisters* guestRegs, ULONG currentCPU
 	__vmx_vmwrite(GuestSsSelector, 0);
 	__vmx_vmwrite(GuestSsBase, 0);
 	__vmx_vmwrite(GuestSsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestSsAccessRight, 0x9B);
+	__vmx_vmwrite(GuestSsAccessRight, 0x93);
 	__vmx_vmwrite(GuestDsSelector, 0);
 	__vmx_vmwrite(GuestDsBase, 0);
 	__vmx_vmwrite(GuestDsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestDsAccessRight, 0x9B);
+	__vmx_vmwrite(GuestDsAccessRight, 0x93);
 	__vmx_vmwrite(GuestEsSelector, 0);
 	__vmx_vmwrite(GuestEsBase, 0);
 	__vmx_vmwrite(GuestEsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestEsAccessRight, 0x9B);
+	__vmx_vmwrite(GuestEsAccessRight, 0x93);
 	__vmx_vmwrite(GuestFsSelector, 0);
 	__vmx_vmwrite(GuestFsBase, 0);
 	__vmx_vmwrite(GuestFsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestFsAccessRight, 0x9B);
+	__vmx_vmwrite(GuestFsAccessRight, 0x93);
 	__vmx_vmwrite(GuestGsSelector, 0);
 	__vmx_vmwrite(GuestGsBase, 0);
 	__vmx_vmwrite(GuestGsLimit, 0xFFFF);
-	__vmx_vmwrite(GuestGsAccessRight, 0x9B);
+	__vmx_vmwrite(GuestGsAccessRight, 0x93);
 	//不需要通过段描述符的 Access Rights 来描述自身属性
 	__vmx_vmwrite(GuestGDTRBase, 0);
 	__vmx_vmwrite(GuestGDTRLimit, 0xFFFF);
@@ -109,6 +125,9 @@ void VmxInitGuestStateAfterExitInit(GpRegisters* guestRegs, ULONG currentCPU
 	guestRegs->DR6 = 0xFFFF0FF0;
 	__vmx_vmwrite(GuestDr7, 0x400);
 	__vmx_vmwrite(GuestInterruptibilityState, 0);
-
-	
+	//需CPU 支持 Unrestricted Guest，而且允许将 Secondary Controls 的 Bit 7 设置为 1
+	SIZE_T secondaryControls = 0;
+	__vmx_vmread(SecondaryProcessorBasedVmExecutionControls, &secondaryControls);
+	secondaryControls |= (1ULL << 7);
+	__vmx_vmwrite(SecondaryProcessorBasedVmExecutionControls, secondaryControls);
 }

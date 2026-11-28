@@ -8,7 +8,7 @@ Eptp EptP = { 0 };
 //分配的总内存的首地址
 PCHAR EptMem = 0;
 //有时候EPT并不是必须的，这里是是否启用EPT
-BOOLEAN UseEpt = FALSE;
+BOOLEAN UseEpt = TRUE;
 
 //通过物理地址获取对应的PTE
 EptCommonEntry* GetPteByPhyAddr(ULONG_PTR addr)
@@ -32,7 +32,7 @@ EptCommonEntry* GetPteByPhyAddr(ULONG_PTR addr)
 
 BOOLEAN InitEpt()
 {
-	if (!UseEpt) return FALSE;
+	if (!UseEpt) return TRUE;
 	ULONG_PTR index = 0;
 	ULONG_PTR* PML4T = 0, * PDPT = 0;
 

@@ -30,11 +30,14 @@ static_assert(sizeof(EptViolationQualification) == 8, "Size check");
 //跳过Guest当前执行的代码
 void VmmAdjustGuestRip()
 {
-	ULONG instLen = 0;
+	SIZE_T  instLen = 0;
 	ULONG_PTR rip = 0;
 	__vmx_vmread(GuestRip, &rip);
 	//获取Guest当前执行指令的长度
-	__vmx_vmread(VmExitInstructionLength, (SIZE_T*)&instLen);
+	__vmx_vmread(VmExitInstructionLength, &instLen);
+	if (instLen == 0 || instLen > 15) {
+		KeBugCheckEx(0x7A89, rip, instLen, 0, 0);
+	}
 	__vmx_vmwrite(GuestRip, (SIZE_T)(rip + instLen));
 }
 
@@ -94,7 +97,8 @@ void VmxPrepareOff(GpRegisters* pGuestRegisters)
 //处理MSR的读写，不用理，CV即可
 VOID ReadWriteMsrHandle(GpRegisters* pGuestRegisters, BOOLEAN isRead)
 {
-	MSR msr = (MSR)__readmsr(pGuestRegisters->cx);
+	ULONG msrIndex = (ULONG)pGuestRegisters->cx;
+	MSR msr = (MSR)msrIndex;
 
 	BOOLEAN transfer_to_vmcs = false;
 	VmcsField vmcs_field = {};
@@ -134,7 +138,6 @@ VOID ReadWriteMsrHandle(GpRegisters* pGuestRegisters, BOOLEAN isRead)
 		}
 		else {
 			msr_value.QuadPart = __readmsr((ULONG)pGuestRegisters->cx);
-			//__vmx_vmread(msr, (SIZE_T*)&msr_value.QuadPart); TODO
 		}
 
 		pGuestRegisters->ax = msr_value.LowPart;
@@ -148,8 +151,7 @@ VOID ReadWriteMsrHandle(GpRegisters* pGuestRegisters, BOOLEAN isRead)
 			__vmx_vmwrite(vmcs_field, (ULONG_PTR)msr_value.QuadPart);
 		}
 		else {
-			__vmx_vmwrite(msr, (ULONG_PTR)msr_value.QuadPart);
-			//__writemsr(pGuestRegisters->cx, msr_value.QuadPart);
+			__writemsr(pGuestRegisters->cx, msr_value.QuadPart);
 		}
 	}
 }
@@ -185,7 +187,7 @@ VOID EptViolationHandle()
 		}
 	}
 	else {
-		DbgBreakPoint();
+		KeBugCheckEx(0x7748, 0, 0, 0, 0);
 	}
 }
 
@@ -241,7 +243,7 @@ BOOLEAN VmCallHandle(GpRegisters* pGuestRegisters)
 	return ContinueVmx;
 }
 
-
+static ExitLoopTracker g_ExitTracker[64];
 EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 {
 	KIRQL irql = KeGetCurrentIrql();
@@ -258,42 +260,62 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	__vmx_vmread(VmExitReason, (SIZE_T*)(&ExitReason));
 
 
-	//static volatile LONG MsrReadLogCount = 0;
-	//if (InterlockedIncrement(&MsrReadLogCount) <= 16)
-	//{
-	//	CheckApicMode(CurrentProcessorIndex);
-	//}
+	/*
+	auto& tracker = g_ExitTracker[CurrentProcessorIndex];
+	if (tracker.Reason == (LONG)ExitReason.fields.reason &&tracker.Rip == (LONG64)Rip)
+	{
+		LONG count = InterlockedIncrement(&tracker.Count);
 
+		if (count >= 64)
+		{
+			SIZE_T instLen = 0;
+
+			__vmx_vmread(VmExitInstructionLength, &instLen);
+
+			ULONG msrIndex = (ULONG)pGuestRegisters->cx;
+
+			KeBugCheckEx(
+				0x7A88,
+				ExitReason.all,
+				msrIndex,
+				Rip,instLen
+			);
+		}
+	}
+	else
+	{
+		tracker.Reason = ExitReason.fields.reason;
+		tracker.Rip = Rip;
+		InterlockedExchange(&tracker.Count, 1);
+	}*/
 	switch (ExitReason.fields.reason)
 	{
-	case ExitTripleFault:
+	case ExitTripleFault: {
 		Log("TripleFault %llx", Rip);
 		//VmmAdjustGuestRip();
-		KeBugCheckEx(0x7777, Rip, 0, 0,0);
+		KeBugCheckEx(0x7777, Rip, 0, 0, 0);
 		break;
-	case ExitEptMisconfig:
+	}
+	case ExitEptMisconfig: {
+
 		Log("ExitEptMisconfig");
 		KeBugCheckEx(0x7778, Rip, 0, 0, 0);
 		break;
-	case ExitEptViolation:
+	}
+	case ExitEptViolation: {
+
 		EptViolationHandle();
 		break;
-	case ExitCrAccess:
+	}
+	case ExitCrAccess: {
+
+		KeBugCheckEx(0x7728, Rip, 0, 0, 0);
 		break;
+	}
 	//msr读写必须处理
 	case ExitMsrRead:
 	{
-		//static volatile LONG MsrReadLogCount = 0;
-		//ULONG64 Rsp = 0;
-		//__vmx_vmread(GuestRsp, &Rsp);
-		//ULONG msrIndex = (ULONG)pGuestRegisters->cx;
-		//if (InterlockedIncrement(&MsrReadLogCount) <= 16)
-		//{
-		//	Log(
-		//		"ExitMsrRead CPU[%i] MSR=%08X RIP=%I64X RSP=%I64X", CurrentProcessorIndex,
-		//		msrIndex, Rip, Rsp
-		//	);
-		//}
+		
 		ReadWriteMsrHandle(pGuestRegisters, TRUE);
 		VmmAdjustGuestRip();
 		break;
@@ -308,7 +330,6 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	case ExitCpuid:
 	{
 		//Log("ExitCpuid");
-		//访问很频繁
 		int leaf = (int)pGuestRegisters->ax;
 		int sub_leaf = (int)pGuestRegisters->cx;
 		int result[4] = { 0 };
@@ -353,8 +374,8 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		else if (exception.fields.interruption_type == kSoftwareException)
 		{
 			__vmx_vmwrite(VmEntryInterruptionInformation, exception.all);
-			int exit_inst_length = 0;
-			__vmx_vmread(VmExitInstructionLength, (SIZE_T*)&exit_inst_length);
+			SIZE_T exit_inst_length = 0;
+			__vmx_vmread(VmExitInstructionLength, &exit_inst_length);
 			__vmx_vmwrite(VmEntryInstructionLength, exit_inst_length);
 		}
 		break;
@@ -363,14 +384,18 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	{
 		Log("ExitMonitorTrapFlag");
 
+		KeBugCheckEx(0x7737, Rip, 0, 0, 0);
 		break;
 	}
 	case ExitHlt:
 	{
 		Log("ExitHlt");
+		KeBugCheckEx(0x7712, Rip, 0, 0, 0);
 		break;
 	}
-	case ExitVmclear:
+	case ExitVmclear: {
+		KeBugCheckEx(0x7719, Rip, 0, 0, 0);
+	}
 	case ExitVmptrld: {
 		SIZE_T cs = 0;
 		__vmx_vmread(GuestCsSelector, &cs);
@@ -382,15 +407,34 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		KeBugCheckEx(0x7A74, Rip, cs, CurrentProcessorIndex, instructionInfo);
 		break;
 	}
-	case ExitVmptrst:
-	case ExitVmread:
-	case ExitVmwrite:
-	case ExitVmresume:
-	case ExitVmoff:
-	case ExitVmon:
-	case ExitVmlaunch:
-	case ExitVmfunc:
-	case ExitInvept:
+	case ExitVmptrst: {
+		KeBugCheckEx(0x7722, Rip, 0, 0, 0);
+	}
+	case ExitVmread: {
+		KeBugCheckEx(0x7723, Rip, 0, 0, 0);
+	}
+	case ExitVmwrite: {
+		KeBugCheckEx(0x7725, Rip, 0, 0, 0);
+	}
+	case ExitVmresume: {
+		KeBugCheckEx(0x7724, Rip, 0, 0, 0);
+	}
+	case ExitVmoff: {
+		KeBugCheckEx(0x7726, Rip, 0, 0, 0);
+	}
+	case ExitVmon: {
+
+		KeBugCheckEx(0x7727, Rip, 0, 0, 0);
+	}
+	case ExitVmlaunch: {
+		KeBugCheckEx(0x7720, Rip, 0, 0, 0);
+	}
+	case ExitVmfunc: {
+		KeBugCheckEx(0x7759, Rip, 0, 0, 0);
+	}
+	case ExitInvept: {
+		KeBugCheckEx(0x7750, Rip, 0, 0, 0);
+	}
 	case ExitInvvpid:
 	{
 		Log("vm inst %d", ExitReason.fields.reason);
@@ -458,21 +502,25 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 	case ExitInit: {
 		ULONG64 apicBase = __readmsr(MsrApicBase);
 		BOOLEAN isBsp = (apicBase & (1ULL << 8)) != 0;
+
+		VmxInitGuestStateAfterExitInit(pGuestRegisters, CurrentProcessorIndex);
+		// 清除事件注入状态
+		__vmx_vmwrite(GuestInterruptibilityState, 0);
+		__vmx_vmwrite(VmEntryInterruptionInformation, 0);
 		if (isBsp)
 		{
-			Log("Current CPU-%i is BSP",CurrentProcessorIndex);
+
+			Log("Current CPU-%i is BSP", CurrentProcessorIndex);
+			__vmx_vmwrite(
+				GuestActivityState,GUEST_ACTIVITY_ACTIVE
+			);
 		}
 		else
 		{
-			
-			
-			VmxInitGuestStateAfterExitInit(pGuestRegisters, CurrentProcessorIndex);
+			Log(" CPU-%i is AP", CurrentProcessorIndex);
 			// AP 进入等待 SIPI 状态
 			__vmx_vmwrite(GuestActivityState,GUEST_ACTIVITY_WAIT_FOR_SIPI	);
-			__vmx_vmwrite(VmEntryInterruptionInformation, 0);
-			Log(" CPU-%i is AP", CurrentProcessorIndex);
 		}
-		//KeBugCheckEx(0x7A03, Rip, ExitReason.fields.reason, CurrentProcessorIndex, isBsp);
 		break;
 	}
 	case ExitSipi: 
@@ -497,21 +545,23 @@ EXTERN_C BOOLEAN VmexitHandler(GpRegisters* pGuestRegisters)
 		break;
 	}
 	case ExitInvalidGuestState: {
-		SIZE_T cr0 = 0;
-		SIZE_T cr4 = 0;
-		SIZE_T efer = 0;
-		SIZE_T activity = 0;
-		SIZE_T interruptibility = 0;
-		SIZE_T entryControls = 0;
-		__vmx_vmread(GuestCr0, &cr0);
-		__vmx_vmread(GuestCr4, &cr4);
-		__vmx_vmread(GuestIa32EferCtl, &efer);
-		__vmx_vmread(GuestActivityState, &activity);
-		__vmx_vmread(GuestInterruptibilityState, &interruptibility);
-		__vmx_vmread(VmEntryControls, &entryControls);
-		Log("CR0:%llx,CR4:%llx,efer:%llx,activity:%llx,interruptibility:%llx,entryControls:%llx", cr0, cr4, efer, activity, interruptibility, entryControls);
+		SIZE_T guestCr4 = 0;
+		SIZE_T csAR = 0;
+		SIZE_T trSelector = 0;
+		SIZE_T trAR = 0;
 
-		KeBugCheckEx(0x7A33, entryControls, cr0, cr4, efer);
+		__vmx_vmread(GuestCr4, &guestCr4);
+		__vmx_vmread(GuestCsAccessRight, &csAR);
+		__vmx_vmread(GuestTRSelector, &trSelector);
+		__vmx_vmread(GuestTRAccessRight, &trAR);
+
+		KeBugCheckEx(
+			0x7A33,
+			guestCr4,
+			csAR,
+			trSelector,
+			trAR
+		);
 		break;
 	}
 	default: {
